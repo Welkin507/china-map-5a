@@ -13,8 +13,8 @@
         .map-wrap #sideBar #subChart{width:100%;height:60%;margin-top:0%;position: relative;}
         .map-wrap #sideBar #subMap{width:100%;height:50%;margin-top:-10%;position: relative;}
         .map-wrap #chart{width:66.66%;height:97%;margin-top:2%;position: relative;}
-        .map-wrap #filter{position: absolute;left: 32%;top: 10%;width: 10%;height: 20%;background-color: transparent;z-index: 1;}
-        .map-wrap #filter div{margin-top: 5%;}
+        .map-wrap #selector{position: absolute;left: 32%;top: 10%;width: 10%;height: 20%;background-color: transparent;z-index: 1;}
+        .map-wrap #selector div{margin-top: 5%;}
     </style>
 </head>
 <body>
@@ -24,7 +24,7 @@
             <div id="subMap"></div>
         </div>
         <div id="chart"></div>
-        <div id="filter">
+        <div id="selector">
             <div>
                 <label for="sortBy">排序指标:</label>
                 <select id="sortBy">
@@ -52,14 +52,14 @@
                 </select>
             </div>
             <div style="text-align: center;">
-                <button onclick="applyFilter()">确认</button>
+                <button onclick="applySelector()">确认</button>
             </div>
         </div>
     </div>
 
     
     <script type="text/javascript">
-        function applyFilter() {
+        function applySelector() {
             // Modify global variables based on the result
             var sortByCn = document.getElementById("sortBy").value;
             switch (sortByCn) {
@@ -88,7 +88,7 @@
     <script type="text/javascript">
         // Read the CSV file and store the table in the global variable
         function readCSVFile() {
-            d3.csv("./data.csv").then(function(data) {
+            return d3.csv("./data.csv").then(function(data) {
                 tableData = data.map(function(d) {
                     var province = d["省级行政区"];
                     if (province.startsWith("内蒙") || province.startsWith("黑龙")) {
@@ -592,8 +592,7 @@
         var provincesEn = ['shanghai', 'hebei','shanxi','neimenggu','liaoning','jilin','heilongjiang','jiangsu','zhejiang','anhui','fujian','jiangxi','shandong','henan','hubei','hunan','guangdong','guangxi','hainan','sichuan','guizhou','yunnan','xizang','shanxi1','gansu','qinghai','ningxia','xinjiang', 'beijing', 'tianjin', 'chongqing', 'xianggang', 'aomen','taiwan'];
         var provincesCn = ['上海', '河北', '山西', '内蒙古', '辽宁', '吉林','黑龙江',  '江苏', '浙江', '安徽', '福建', '江西', '山东','河南', '湖北', '湖南', '广东', '广西', '海南', '四川', '贵州', '云南', '西藏', '陕西', '甘肃', '青海', '宁夏', '新疆', '北京', '天津', '重庆', '香港', '澳门','台湾'];
 
-        readCSVFile();
-        setTimeout(showGlobal, 100);
+        readCSVFile().then(showGlobal);
 	</script>
 
 </body>
