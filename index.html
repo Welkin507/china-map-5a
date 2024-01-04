@@ -13,6 +13,8 @@
         .map-wrap #sideBar #subChart{width:100%;height:60%;margin-top:0%;position: relative;}
         .map-wrap #sideBar #subMap{width:100%;height:50%;margin-top:-10%;position: relative;}
         .map-wrap #chart{width:66.66%;height:97%;margin-top:2%;position: relative;}
+        .map-wrap #filter{position: absolute;left: 32%;top: 10%;width: 10%;height: 20%;background-color: transparent;z-index: 1;}
+        .map-wrap #filter div{margin-top: 5%;}
     </style>
 </head>
 <body>
@@ -22,13 +24,68 @@
             <div id="subMap"></div>
         </div>
         <div id="chart"></div>
+        <div id="filter">
+            <div>
+                <label for="sortBy">排序指标:</label>
+                <select id="sortBy">
+                    <option value="评分" selected>评分</option>
+                    <option value="价格">价格</option>
+                    <option value="销量">销量</option>
+                    <option value="交通">交通</option>
+                </select>
+            </div>
+            <div>
+                <label for="sortOrder">排序方式:</label>
+                <select id="sortOrder">
+                    <option value="升序">升序</option>
+                    <option value="降序" selected>降序</option>
+                </select>
+            </div>
+            <div>
+                <label for="selectCount">展示个数:</label>
+                <select id="selectCount">
+                    <option value="4">4</option>
+                    <option value="6">6</option>
+                    <option value="8">8</option>
+                    <option value="10" selected>10</option>
+                    <option value="12">12</option>
+                </select>
+            </div>
+            <div style="text-align: center;">
+                <button onclick="applyFilter()">确认</button>
+            </div>
+        </div>
     </div>
 
     
     <script type="text/javascript">
-        // Define a global variable to store the table information
-        var tableData;
+        function applyFilter() {
+            // Modify global variables based on the result
+            var sortByCn = document.getElementById("sortBy").value;
+            switch (sortByCn) {
+                case "评分":
+                    sortBy = "rating";
+                    break;
+                case "价格":
+                    sortBy = "price";
+                    break;
+                case "销量":
+                    sortBy = "sales";
+                    break;
+                case "交通":
+                    sortBy = "transportation";
+                    break;
+            }
+            sortOrder = document.getElementById("sortOrder").value === "降序" ? 0 : 1;
+            selectCount = document.getElementById("selectCount").value;
 
+            // Call showProvince() function
+            showProvince();
+        }
+    </script>
+
+
+    <script type="text/javascript">
         // Read the CSV file and store the table in the global variable
         function readCSVFile() {
             d3.csv("./data.csv").then(function(data) {
@@ -66,8 +123,6 @@
                 });
             });
         }
-
-        readCSVFile();
     </script>
 
 
@@ -94,7 +149,7 @@
             });
 
             // Select top selectCount attractions
-            var selectedData = filteredData.slice(0, selectCount);
+            var selectedData = filteredData.slice(filteredData.length - selectCount, filteredData.length);
 
             // Extract attraction name and the specified indicator value
             var result = selectedData.map(function(d) {
@@ -136,11 +191,11 @@
         // counts = {
         //     'provinceA': countA,
         //     'provinceB': countB,
-        //     // Add more provinces as needed
+        //     // Add more provincesEn as needed
         // };
-        function getProvinceCounts(provinces) {
+        function getProvinceCounts(provincesEn) {
             var counts = {};
-            provinces.forEach(function(province) {
+            provincesEn.forEach(function(province) {
                 var count = tableData.filter(function(data) {
                     return data.province === province;
                 }).length;
@@ -174,6 +229,26 @@
         function drawBarChart(data) {
             var subChart = echarts.init(document.getElementById('subChart'));
             
+            // range: [0, 1] for sortBy='rating'
+            // range: [0, 500] for sortBy='price'
+            // range: [0, 10000] for sortBy='sales'
+            // range: [0, 300] for sortBy='transportation'
+            var xmin = 0;
+            switch (sortBy) {
+                case "rating":
+                    var xmax = 1;
+                    break;
+                case "price":
+                    var xmax = 300;
+                    break;
+                case "sales":
+                    var xmax = 10000;
+                    break;
+                case "transportation":
+                    var xmax = 300;
+                    break;
+            }
+
             var optionSubChart = {
                 tooltip: {
                     trigger: 'item', // Trigger tooltip on item (i.e., the bar in the bar chart)
@@ -195,10 +270,15 @@
                     position: 'right',
                     data: data.map(function(d) {
                         return d.attraction;
-                    })
+                    }),
+                    axisLabel: {
+                        z: 10
+                    }
                 },
                 xAxis: {
-                    type: 'value'
+                    type: 'value',
+                    min: xmin,
+                    max: xmax
                 },
                 grid: {
                     right: '50%', // Adjust the right margin as needed
@@ -224,20 +304,31 @@
 
     <script type="text/javascript">
         //展示对应的省
-        function  showProvince(pName,pText){
-            province = pText;
+        function  showProvince() {
+            // Need to use global variable province, sortBy, sortOrder, selectCount, provincesCn, provincesEn
+            var provinceEn = 0;
+            for(var i=0;i<provincesCn.length;i++){
+                if(province == provincesCn[i]){
+                    provinceEn = provincesEn[i];
+                    break;
+                }
+            }
+            if (provinceEn === 0) {
+                console.warn('No data available for province ' + province);
+                return; // Exit if no data available
+            }
 
             var filteredData = filterAndSortData(province, sortBy, sortOrder, selectCount);
             var subChart = drawBarChart(filteredData);
 
-            loadBdScript('$'+pName+'JS','province/'+pName+'.js',function(){
-                var subMap = initEcharts(pName,pText); 
+            loadBdScript('$'+provinceEn+'JS','province/'+provinceEn+'.js',function(){
+                var subMap = initEcharts(provinceEn,province); 
                 modifyChartOnClick(subChart, subMap);
             });
         }
 
         function loadBdScript(scriptId, url, callback) {
-         var script = document.createElement("script")  
+            var script = document.createElement("script")  
             script.type = "text/javascript";  
             if (script.readyState){  //IE  
                 script.onreadystatechange = function(){  
@@ -405,106 +496,104 @@
         }
     </script>
 
+
+    <script type="text/javascript">
+        function showGlobal(){
+            var provinceCounts = getProvinceCounts(provincesCn);
+            data = [];
+
+            for (i=0; i<provincesEn.length; i++) {
+                data.push({
+                    name: provincesCn[i],
+                    value: provinceCounts[provincesCn[i]]
+                });
+            }
+
+            //指定图标的配置项和数据
+            var option ={
+                series : [
+                {
+                    name: '网点个数',
+                    //series[i]-map:系列列表。每个系列通过 type 决定自己的图表类型,此处是地图类型
+                    type: 'map', 
+                    //这里是'china',及因为js中注册的名字，如果是上海市，则该出需provinceEn 指的是'shanghai'
+                    mapType: 'china',
+                    data:data,
+                    textStyle:{
+                        align:"center",
+                        baseline:"middle"
+                    },
+                    
+                    //地图区域的多边形 图形样式，有 normal 和 emphasis 两个状态
+                    itemStyle: {
+                    //normal 是图形在默认状态下的样式；
+                        normal: {
+                            show: true,
+                            borderColor:"#FCFCFC",
+                            borderWidth:"1"
+                        },
+                        //emphasis 是图形在高亮状态下的样式，比如在鼠标悬浮或者图例联动高亮时。
+                        emphasis: {
+                            show: true,
+                        }
+                    },
+                    //图形上的文本标签，可用于说明图形的一些数据信息
+                    label: {
+                        normal: {
+                            show: true,
+                            formatter: function(params) {
+                                return params.name + '\n' + provinceCounts[params.name];
+                            }
+                        },
+                        emphasis: {
+                            show: true
+                        }
+                    },
+                }],
+                title : {
+                    text: '中国5A景区可视化地图',
+                    left: 'center'
+                } ,
+                visualMap: {
+                    min: 0,
+                    max: 26,
+                    left: 'left',
+                    top: 'bottom',
+                    text: ['High', 'Low'],
+                    inRange: {
+                        color: ['#FFFFFF', '#FF4500'] // White to deep red
+                    },
+                }
+            };
+
+            //使用刚指定的配置项和数据显示图表。
+            myChart.setOption(option);
+
+            myChart.on('click', function (param) {
+                province = param.name;
+                //遍历取到provincesCn 中的下标  去拿到对应的省js
+                showProvince();         
+            });
+        }
+    </script>
+
+
+
 	<script type="text/javascript">
         
 		var myChart = echarts.init(document.getElementById('chart'));
-        var pName = 'china';
         var province = 0;
         var sortBy = "rating";
         var sortOrder = 0;
         var selectCount = 10;
+        var tableData;
 
         //定义全国省份的数组
-        var provinces = ['shanghai', 'hebei','shanxi','neimenggu','liaoning','jilin','heilongjiang','jiangsu','zhejiang','anhui','fujian','jiangxi','shandong','henan','hubei','hunan','guangdong','guangxi','hainan','sichuan','guizhou','yunnan','xizang','shanxi1','gansu','qinghai','ningxia','xinjiang', 'beijing', 'tianjin', 'chongqing', 'xianggang', 'aomen','taiwan'];
-        var provincesText = ['上海', '河北', '山西', '内蒙古', '辽宁', '吉林','黑龙江',  '江苏', '浙江', '安徽', '福建', '江西', '山东','河南', '湖北', '湖南', '广东', '广西', '海南', '四川', '贵州', '云南', '西藏', '陕西', '甘肃', '青海', '宁夏', '新疆', '北京', '天津', '重庆', '香港', '澳门','台湾'];
+        var provincesEn = ['shanghai', 'hebei','shanxi','neimenggu','liaoning','jilin','heilongjiang','jiangsu','zhejiang','anhui','fujian','jiangxi','shandong','henan','hubei','hunan','guangdong','guangxi','hainan','sichuan','guizhou','yunnan','xizang','shanxi1','gansu','qinghai','ningxia','xinjiang', 'beijing', 'tianjin', 'chongqing', 'xianggang', 'aomen','taiwan'];
+        var provincesCn = ['上海', '河北', '山西', '内蒙古', '辽宁', '吉林','黑龙江',  '江苏', '浙江', '安徽', '福建', '江西', '山东','河南', '湖北', '湖南', '广东', '广西', '海南', '四川', '贵州', '云南', '西藏', '陕西', '甘肃', '青海', '宁夏', '新疆', '北京', '天津', '重庆', '香港', '澳门','台湾'];
 
-        setTimeout(function() {
-
-        var provinceCounts = getProvinceCounts(provincesText);
-        data = [];
-
-        for (i=0; i<provinces.length; i++) {
-            data.push({
-                name: provincesText[i],
-                value: provinceCounts[provincesText[i]]
-            });
-        }
-
-		//指定图标的配置项和数据
-        var option ={
-            series : [
-            {
-                name: '网点个数',
-                //series[i]-map:系列列表。每个系列通过 type 决定自己的图表类型,此处是地图类型
-                type: 'map', 
-                //这里是'china',及因为js中注册的名字，如果是上海市，则该出需pName 指的是'shanghai'
-                mapType: pName,
-                data:data,
-				textStyle:{
-					align:"center",
-					baseline:"middle"
-				},
-                
-                //地图区域的多边形 图形样式，有 normal 和 emphasis 两个状态
-                itemStyle: {
-                //normal 是图形在默认状态下的样式；
-                    normal: {
-                        show: true,
-                        borderColor:"#FCFCFC",
-                        borderWidth:"1"
-                    },
-                    //emphasis 是图形在高亮状态下的样式，比如在鼠标悬浮或者图例联动高亮时。
-                    emphasis: {
-                        show: true,
-                    }
-                },
-                //图形上的文本标签，可用于说明图形的一些数据信息
-                label: {
-                    normal: {
-                        show: true,
-                        formatter: function(params) {
-                            return params.name + '\n' + provinceCounts[params.name];
-                        }
-                    },
-                    emphasis: {
-                        show: true
-                    }
-                },
-            }],
-            title : {
-                text: '中国5A景区可视化地图',
-                left: 'center'
-            } ,
-            visualMap: {
-                min: 0,
-                max: 26,
-                left: 'left',
-                top: 'bottom',
-                text: ['High', 'Low'],
-                inRange: {
-                    color: ['#FFFFFF', '#FF4500'] // White to deep red
-                },
-            }
-           };
-
-        //使用刚指定的配置项和数据显示图表。
-        myChart.setOption(option);
-
-        myChart.on('click', function (param) {
-
-              // alert(param.name);
-              //遍历取到provincesText 中的下标  去拿到对应的省js
-              for(var  i= 0 ;i<provincesText.length;i++){
-
-                   if(param.name == provincesText[i]){
-                       //显示对应省份的方法
-                        showProvince(provinces[i] , provincesText[i]);
-                        break;
-                   }
-
-              }         
-        });
-    }, 500);
+        readCSVFile();
+        setTimeout(showGlobal, 100);
 	</script>
 
 </body>
