@@ -1,6 +1,6 @@
 # China Map 5A Coursework
 
-This coursework explores 5A attractions in China with a dedicated visualization page.
+This coursework explores 5A attractions in China with a visualization page.
 
 - **Enter the Page:** Open the page using tools like Live Server.
 ![Enter the Show](demo/01_Enter_the_show.png)
