@@ -132,6 +132,45 @@
 
 
     <script type="text/javascript">
+        // Define a global function to get the number of attractions in each province
+        // counts = {
+        //     'provinceA': countA,
+        //     'provinceB': countB,
+        //     // Add more provinces as needed
+        // };
+        function getProvinceCounts(provinces) {
+            var counts = {};
+            provinces.forEach(function(province) {
+                var count = tableData.filter(function(data) {
+                    return data.province === province;
+                }).length;
+                counts[province] = count;
+            });
+            return counts;
+        }
+    </script>
+
+
+    <script type="text/javascript">
+        // Get information of a certain attraction
+        // return a string
+        // e.g. "xxx\n评语：xxx\n评分：xxx/1\n价格：xxx\n销量：xxx\n交通：xxx"
+        function getAttractionInfo(attraction) {
+            var filteredData = tableData.filter(function(d) {
+                return d.attraction === attraction;
+            });
+            var result = filteredData[0].attraction + "\n" +
+                        "评语：" + filteredData[0].comment + "\n" +
+                        "评分：" + filteredData[0].rating + "/1\n" +
+                        "价格：" + filteredData[0].price + "\n" +
+                        "销量：" + filteredData[0].sales + "\n" +
+                        "交通：" + filteredData[0].transportation;
+            return result;
+        }
+    </script>
+
+
+    <script type="text/javascript">
         function drawBarChart(data) {
             var subChart = echarts.init(document.getElementById('subChart'));
             
@@ -168,53 +207,203 @@
                     data: data.map(function(d) {
                         return d.value;
                     }),
-                    type: 'bar'
+                    type: 'bar',
+                    itemStyle: {
+                        normal: {
+                            color: 'red'
+                        }
+                    }
                 }]
             };
             
             subChart.setOption(optionSubChart);
+            return subChart;
         }
     </script>
 
 
     <script type="text/javascript">
-        // Define a global function to get the number of attractions in each province
-        // counts = {
-        //     'provinceA': countA,
-        //     'provinceB': countB,
-        //     // Add more provinces as needed
-        // };
-        function getProvinceCounts(provinces) {
-            var counts = {};
-            provinces.forEach(function(province) {
-                var count = tableData.filter(function(data) {
-                    return data.province === province;
-                }).length;
-                counts[province] = count;
+        //展示对应的省
+        function  showProvince(pName,pText){
+            province = pText;
+
+            var filteredData = filterAndSortData(province, sortBy, sortOrder, selectCount);
+            var subChart = drawBarChart(filteredData);
+
+            loadBdScript('$'+pName+'JS','province/'+pName+'.js',function(){
+                var subMap = initEcharts(pName,pText); 
+                modifyChartOnClick(subChart, subMap);
             });
-            return counts;
+        }
+
+        function loadBdScript(scriptId, url, callback) {
+         var script = document.createElement("script")  
+            script.type = "text/javascript";  
+            if (script.readyState){  //IE  
+                script.onreadystatechange = function(){  
+                    if (script.readyState == "loaded" || script.readyState == "complete"){  
+                        script.onreadystatechange = null;  
+                        callback();  
+                    }  
+                };  
+            } else {  //Others  
+                script.onload = function(){  
+                    callback();  
+                };  
+            }  
+            script.src = url; 
+            script.id = scriptId;
+            document.getElementsByTagName("head")[0].appendChild(script); 
+        };
+
+        //加载个省市地图
+        function initEcharts(subName, subText) {
+            var child = echarts.init(document.getElementById('subMap'));
+            
+            var longitudeAndLatitude = getLongitudeAndLatitude(province);
+            
+            if (longitudeAndLatitude.length === 0) {
+                console.error('No data available for scatter series');
+                return; // Exit if no data available
+            }
+            
+            // Ensure the series configuration is correctly set
+            var optionSubMap = {
+                tooltip: {
+                    trigger: 'item', // Trigger tooltip on item (i.e., the bar in the bar chart)
+                    position: function (point, params, dom, rect, size) {
+                        // Set the tooltip position at the right and bottom of the mouse
+                        return [point[0] + 10, point[1] + 10];
+                    },
+                    formatter: function(params) {
+                        // Get the name of the attraction from the data point
+                        var attraction = params.name;
+                        // Use the getAttractionInfo function to get the info string
+                        var info = getAttractionInfo(attraction);
+                        // Return the info string to be displayed in the tooltip
+                        return info;
+                    }
+                },
+                series: [
+                    {
+                        type: 'map',
+                        mapType: subText,
+                        label: {
+                            normal: {
+                                show: false
+                            },
+                            emphasis: {
+                                show: true
+                            }
+                        },
+                        itemStyle: {
+                            normal: {
+                                show: true,
+                                areaColor: "#FFFACD",
+                                borderColor: "#FCFCFC",
+                                borderWidth: "1"
+                            },
+                            emphasis: {
+                                show: true,
+                                areaColor: "#C8A5DF",
+                            }
+                        },
+                        tooltip: {
+                            show: false
+                        },
+                    },
+                    {
+                        type: 'scatter',
+                        coordinateSystem: 'geo',
+                        data: longitudeAndLatitude,
+                        itemStyle: {
+                            normal: {
+                                color: 'red' // Change color to ensure visibility
+                            }
+                        },
+                    }
+                ],
+                geo: {
+                    map: subText // Ensure geo map type is set correctly
+                }
+            }
+            child.setOption(optionSubMap);
+            return child;
         }
     </script>
 
 
     <script type="text/javascript">
-        // Get information of a certain attraction
-        // return a string
-        // e.g. "xxx\n评语：xxx\n评分：xxx/1\n价格：xxx\n销量：xxx\n交通：xxx"
-        function getAttractionInfo(attraction) {
-            var filteredData = tableData.filter(function(d) {
-                return d.attraction === attraction;
+        function modifyChartOnClick(subChart, subMap) {
+            subChart.on('click', function (params) {
+                var selectedAttraction = params.name;
+
+                // Find the corresponding scatter point in subMap
+                var scatterSeries = subMap.getOption().series.find(series => series.type === 'scatter');
+                var scatterData = scatterSeries.data;
+                var scatterIndex = scatterData.findIndex(point => point.name === selectedAttraction);
+
+                // Change color of the selected scatter point to yellow
+                scatterData.forEach((point, index) => {
+                    point.itemStyle = {
+                        normal: {
+                            color: index === scatterIndex ? 'purple' : 'red'
+                        }
+                    };
+                });
+
+                var optionSubMap = subMap.getOption();
+                optionSubMap.series[1].data = scatterData;
+                subMap.setOption(optionSubMap);
+                var barName = subChart.getOption().yAxis[0].data;
+                var barIndex = barName.findIndex(attraction => attraction === selectedAttraction);
+
+                // Change color of the selected bar to purple
+                var newItemStyle = subChart.getOption().series[0].itemStyle;
+                newItemStyle.normal.color = function(params) {
+                    return params.dataIndex === barIndex ? 'purple' : 'red';
+                };
+
+                var optionSubChart = subChart.getOption();
+                optionSubChart.series[0].itemStyle = newItemStyle;
+                subChart.setOption(optionSubChart);
             });
-            var result = filteredData[0].attraction + "\n" +
-                         "评语：" + filteredData[0].comment + "\n" +
-                         "评分：" + filteredData[0].rating + "/1\n" +
-                         "价格：" + filteredData[0].price + "\n" +
-                         "销量：" + filteredData[0].sales + "\n" +
-                         "交通：" + filteredData[0].transportation;
-            return result;
+
+            subMap.on('click', function (params) {
+                var selectedAttraction = params.data.name;
+
+                // Find the corresponding scatter point in subMap
+                var scatterSeries = subMap.getOption().series.find(series => series.type === 'scatter');
+                var scatterData = scatterSeries.data;
+                var scatterIndex = scatterData.findIndex(point => point.name === selectedAttraction);
+
+                // Change color of the selected scatter point to yellow
+                scatterData.forEach((point, index) => {
+                    point.itemStyle = {
+                        normal: {
+                            color: index === scatterIndex ? 'purple' : 'red'
+                        }
+                    };
+                });
+
+                var optionSubMap = subMap.getOption();
+                optionSubMap.series[1].data = scatterData;
+                subMap.setOption(optionSubMap);
+                var barName = subChart.getOption().yAxis[0].data;
+                var barIndex = barName.findIndex(attraction => attraction === selectedAttraction);
+
+                // Change color of the selected bar to purple
+                var newItemStyle = subChart.getOption().series[0].itemStyle;
+                newItemStyle.normal.color = function(params) {
+                    return params.dataIndex === barIndex ? 'purple' : 'red';
+                };
+
+                var optionSubChart = subChart.getOption();
+                optionSubChart.series[0].itemStyle = newItemStyle;
+                subChart.setOption(optionSubChart);
+            });
         }
     </script>
-
 
 	<script type="text/javascript">
         
@@ -309,124 +498,12 @@
 
                    if(param.name == provincesText[i]){
                        //显示对应省份的方法
-                        showProvince(provinces[i] , provincesText[i]) ;
-                        break ;
+                        showProvince(provinces[i] , provincesText[i]);
+                        break;
                    }
 
               }         
-         });
-
-        //展示对应的省
-        function  showProvince(pName,pText){
-            province = pText;
-
-            var filteredData = filterAndSortData(province, sortBy, sortOrder, selectCount);
-            console.log(tableData);
-            console.log(filteredData);
-            drawBarChart(filteredData);
-
-            loadBdScript('$'+pName+'JS','province/'+pName+'.js',function(){
-                initEcharts(pName,pText) ; 
-            });
-        }
-
-        function loadBdScript(scriptId, url, callback) {
-         var script = document.createElement("script")  
-            script.type = "text/javascript";  
-            if (script.readyState){  //IE  
-                script.onreadystatechange = function(){  
-                    if (script.readyState == "loaded" || script.readyState == "complete"){  
-                        script.onreadystatechange = null;  
-                        callback();  
-                    }  
-                };  
-            } else {  //Others  
-                script.onload = function(){  
-                    callback();  
-                };  
-            }  
-            script.src = url; 
-            script.id = scriptId;
-            document.getElementsByTagName("head")[0].appendChild(script); 
-        };
-
-//加载个省市地图
-        function initEcharts(subName, subText) {
-            var child = echarts.init(document.getElementById('subMap'));
-            
-            var longitudeAndLatitude = getLongitudeAndLatitude(province);
-            
-            if (longitudeAndLatitude.length === 0) {
-                console.error('No data available for scatter series');
-                return; // Exit if no data available
-            }
-            
-            // Ensure the series configuration is correctly set
-            optionSubMap = {
-                tooltip: {
-                    trigger: 'item', // Trigger tooltip on item (i.e., the bar in the bar chart)
-                    position: function (point, params, dom, rect, size) {
-                        // Set the tooltip position at the right and bottom of the mouse
-                        return [point[0] + 10, point[1] + 10];
-                    },
-                    formatter: function(params) {
-                        // Get the name of the attraction from the data point
-                        var attraction = params.name;
-                        // Use the getAttractionInfo function to get the info string
-                        var info = getAttractionInfo(attraction);
-                        // Return the info string to be displayed in the tooltip
-                        return info;
-                    }
-                },
-                series: [
-                    {
-                        type: 'map',
-                        mapType: subText,
-                        label: {
-                            normal: {
-                                show: false
-                            },
-                            emphasis: {
-                                show: true
-                            }
-                        },
-                        itemStyle: {
-                            normal: {
-                                show: true,
-                                areaColor: "#FFFACD",
-                                borderColor: "#FCFCFC",
-                                borderWidth: "1"
-                            },
-                            emphasis: {
-                                show: true,
-                                areaColor: "#C8A5DF",
-                            }
-                        },
-                        tooltip: {
-                            show: false
-                        },
-                    },
-                    {
-                        type: 'scatter',
-                        coordinateSystem: 'geo',
-                        data: longitudeAndLatitude,
-                        symbol: 'circle',
-                        symbolSize: 10, // Increase if needed
-                        itemStyle: {
-                            normal: {
-                                color: 'red' // Change color to ensure visibility
-                            }
-                        },
-                    }
-                ],
-                geo: {
-                    map: subText // Ensure geo map type is set correctly
-                }
-            }
-            child.setOption(optionSubMap);
-        }
-
-
+        });
     }, 500);
 	</script>
 
