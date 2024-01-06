@@ -13,8 +13,9 @@
         .map-wrap #sideBar #subChart{width:100%;height:60%;margin-top:0%;position: relative;}
         .map-wrap #sideBar #subMap{width:100%;height:50%;margin-top:-10%;position: relative;}
         .map-wrap #chart{width:66.66%;height:97%;margin-top:2%;position: relative;}
-        .map-wrap #selector{position: absolute;left: 32%;top: 10%;width: 10%;height: 20%;background-color: transparent;z-index: 1;}
+        .map-wrap #selector{position: absolute;left: 32%;top: 10%;height: 20%;background-color: transparent;z-index: 1;}
         .map-wrap #selector div{margin-top: 5%;}
+        .map-wrap #enterGallery{position: absolute;right:3% ;top: 10%;height: 10%;background-color: transparent;z-index: 1;}
     </style>
 </head>
 <body>
@@ -55,6 +56,9 @@
                 <button onclick="applySelector()">确认</button>
             </div>
         </div>
+        <div id="enterGallery">
+            <button onclick="openGalleryPage()">进入画廊</button>
+        </div>
     </div>
 
     
@@ -81,6 +85,13 @@
 
             // Call showProvince() function
             showProvince();
+        }
+    </script>
+
+
+    <script type="text/javascript">
+        function openGalleryPage() {
+            window.open("gallery.html");
         }
     </script>
 
@@ -191,7 +202,7 @@
         // counts = {
         //     'provinceA': countA,
         //     'provinceB': countB,
-        //     // Add more provincesEn as needed
+        //     // Add more provinces as needed
         // };
         function getProvinceCounts(provincesEn) {
             var counts = {};

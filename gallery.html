@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>中国5A景区可视化静态页面</title>
+    <style>
+        .page-wrap{width:100%;height:100vh;background-color:white;position:relative;display:flex;}
+        .button-wrap{position: absolute;right: 3%;top: 10%;height: 10%;background-color: transparent;z-index: 1;}
+    </style>
+</head>
+<body>
+    <div class="page-wrap">
+        <div class="button-wrap">
+            <button onclick="addImage('imgs/01.png')">01</button>
+            <button onclick="addImage('imgs/02.png')">02</button>
+            <button onclick="addImage('imgs/03.png')">03</button>
+            <button onclick="closePage()">关闭画廊</button>
+        </div>
+    </div>
+
+    <script>
+        function addImage(url) {
+            var pageWrap = document.querySelector('.page-wrap');
+            var image = new Image();
+            image.src = url;
+            image.onload = function() {
+                var imageWidth = image.width;
+                var imageHeight = image.height;
+                var pageWrapWidth = pageWrap.offsetWidth;
+                var pageWrapHeight = pageWrap.offsetHeight;
+                var scaleFactor = Math.min(pageWrapWidth / imageWidth, pageWrapHeight / imageHeight);
+                var scaledWidth = imageWidth * scaleFactor;
+                var scaledHeight = imageHeight * scaleFactor;
+                var left = (pageWrapWidth - scaledWidth) / 2;
+                var top = (pageWrapHeight - scaledHeight) / 2;
+                var imageDiv = document.createElement('div');
+                imageDiv.style.position = 'absolute';
+                imageDiv.style.left = left + 'px';
+                imageDiv.style.top = top + 'px';
+                imageDiv.style.width = scaledWidth + 'px';
+                imageDiv.style.height = scaledHeight + 'px';
+                imageDiv.style.backgroundImage = 'url(' + url + ')';
+                imageDiv.style.backgroundSize = 'contain';
+                pageWrap.appendChild(imageDiv);
+            };
+        }
+
+        function closePage() {
+            window.close();
+        }
+    </script>
+</body>
+</html>
